@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>银行凭条录入测试系统</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+        #timer {
+            color: #ff4444;
+            font-size: 2em;
+        }
+        #voucher {
+            font-size: 3em;
+            letter-spacing: 5px;
+            margin: 30px 0;
+        }
+        #inputField {
+            font-size: 1.5em;
+            padding: 10px;
+            width: 300px;
+        }
+        .stats {
+            background: #f0f0f0;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        .config {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        #durationInput {
+            padding: 8px;
+            width: 100px;
+            font-size: 1.1em;
+        }
+    </style>
+</head>
+<body>
+    <h1>银行凭条录入测试</h1>
+    
+    <!-- 配置区域 -->
+    <div class="config">
+        <input type="file" id="fileInput" accept=".txt">
+        <input type="number" id="durationInput" value="60" min="10" placeholder="测试时间(秒)">
+        <button onclick="startTest()">开始测试</button>
+    </div>
+
+    <!-- 测试显示区域 -->
+    <div id="testArea" style="display:none;">
+        <div id="timer">60</div>
+        <div id="voucher"></div>
+        <input type="text" id="inputField" autocomplete="off">
+        <div class="stats">
+            正确数：<span id="correctCount">0</span> | 
+            正确率：<span id="accuracy">0</span>% |
+            速度：<span id="speed">0.0</span>/分钟
+        </div>
+    </div>
+
+    <script>
+        let vouchers = [];
+        let currentIndex = 0;
+        let correctCount = 0;
+        let timer;
+        let startTime;
+        let testDuration = 60;
+
+        // 读取题库文件
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(e) {
+                vouchers = e.target.result.split('\n')
+                    .map(line => line.trim())
+                    .filter(line => line.length > 0);
+                shuffleArray(vouchers);
+                alert(`已加载 ${vouchers.length} 条题目`);
+            };
+            
+            reader.readAsText(file);
+        });
+
+        // 开始测试
+        function startTest() {
+            if (vouchers.length === 0) {
+                alert('请先上传题库文件！');
+                return;
+            }
+
+            testDuration = parseInt(document.getElementById('durationInput').value) || 60;
+            if (testDuration < 10) {
+                alert('测试时间不能少于10秒');
+                return;
+            }
+
+            document.getElementById('testArea').style.display = 'block';
+            document.getElementById('inputField').focus();
+            
+            currentIndex = 0;
+            correctCount = 0;
+            startTime = Date.now();
+            
+            // 初始化显示
+            showNextVoucher();
+            startTimer();
+            
+            // 绑定回车事件
+            document.getElementById('inputField').onkeydown = function(e) {
+                if (e.key === 'Enter') checkAnswer();
+            };
+        }
+
+        // 显示题目
+        function showNextVoucher() {
+            if (currentIndex >= vouchers.length) {
+                endTest();
+                return;
+            }
+            document.getElementById('voucher').textContent = vouchers[currentIndex];
+            document.getElementById('inputField').value = '';
+        }
+
+        // 计时器
+        function startTimer() {
+            const timerElement = document.getElementById('timer');
+            
+            timer = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const remaining = testDuration - elapsed;
+                
+                timerElement.textContent = remaining;
+                
+                // 更新速度
+                const speed = (correctCount / (elapsed/60)) || 0;
+                document.getElementById('speed').textContent = speed.toFixed(1);
+                
+                if (remaining <= 0) {
+                    endTest();
+                }
+            }, 200);
+        }
+
+        // 校验答案
+        function checkAnswer() {
+            const userInput = document.getElementById('inputField').value.trim();
+            const correctAnswer = vouchers[currentIndex];
+            
+            if (userInput === correctAnswer) correctCount++;
+            
+            currentIndex++;
+            updateStats();
+            showNextVoucher();
+        }
+
+        // 更新统计
+        function updateStats() {
+            const total = currentIndex;
+            const accuracy = total > 0 ? (correctCount / total * 100) : 0;
+            document.getElementById('correctCount').textContent = correctCount;
+            document.getElementById('accuracy').textContent = accuracy.toFixed(2);
+        }
+
+        // 结束测试
+        function endTest() {
+            clearInterval(timer);
+            const total = currentIndex;
+            const accuracy = total > 0 ? (correctCount / total * 100) : 0;
+            const finalSpeed = (correctCount / (testDuration/60)).toFixed(1);
+            
+            alert(`测试结束！\n
+总录入数：${total}\n
+正确数：${correctCount}\n
+正确率：${accuracy.toFixed(2)}%\n
+最终速度：${finalSpeed} 正确/分钟`);
+            
+            document.getElementById('testArea').style.display = 'none';
+        }
+
+        // 工具函数
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+    </script>
+</body>
+</html>
